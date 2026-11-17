@@ -4,3 +4,11 @@
 *.ptx
 *.cubin
 *.fatbin
+
+# Local connection details, original logs and machine-specific artifacts
+/private-local/
+**/build*/
+**/known_hosts
+*.nsys-rep
+*.ncu-rep
+*.sqlite

@@ -1,4 +1,4 @@
-==PROF== Connected to process 84751 (/home/liutao/add_cuda/cuda-foundations-master/01-sgemm-tutorial/build/sgemm_benchmark)
+==PROF== Connected to process 84751 (/path/to/reference-project/build/sgemm_benchmark)
 ==PROF== Profiling "naive_sgemm_kernel": 0%....50%....100% - 45 passes
 ==PROF== Profiling "naive_sgemm_kernel": 0%....50%....100% - 45 passes
 ==PROF== Profiling "naive_sgemm_kernel": 0%....50%....100% - 45 passes
@@ -96,7 +96,7 @@ Key Optimization Concepts:
   - Tensor Cores: Use specialized hardware for matrix operations
 
 ==PROF== Disconnected from process 84751
-[84751] sgemm_benchmark@127.0.0.1
+[84751] sgemm_benchmark@<SSH_HOST>
   naive_sgemm_kernel(const float *, const float *, float *, int, int, int) (32, 32, 1)x(32, 32, 1), Context 1, Stream 7, Device 0, CC 8.9
     Section: GPU Speed Of Light Throughput
     ----------------------- ----------- ------------

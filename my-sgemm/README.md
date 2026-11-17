@@ -60,18 +60,24 @@ cuBLAS 通过 `C^T=B^T*A^T` 适配行主序，使用 `CUBLAS_PEDANTIC_MATH` 作�
 
 ## 性能对比表
 
-当前开发环境未发现 nvcc、CMake，尚未编译或运行 GPU 测试。下面不填入参考项目的结果，`profile/*.txt` 也明确标记为待采集。运行上述命令后，将本机 CSV 结果填入表格，同时记录 GPU、CUDA/驱动版本、架构、尺寸及迭代次数。
+2026-11-17 在 Ubuntu 24.04 WSL2、RTX 4050 Laptop（sm_89）、CUDA 12.0.76、GCC 12.4、CMake 3.28.3 下完成 Release 构建，5 项 CTest 全部通过。以下为 1024³、预热 5 次、测量 20 次的一次实测；笔记本功耗、温度与后台负载会影响结果，不能视为硬件峰值。
 
 | 实现 | 输入 / 累加 | 平均 ms | GFLOP/s | 相对 cuBLAS 加速比 |
 | --- | --- | --- | --- | --- |
-| Naive | FP32 / FP32 | 待测 | 待测 | 待测 |
-| Tiled | FP32 / FP32 | 待测 | 待测 | 待测 |
-| Tensor Core | FP16 / FP32 | 待测 | 待测 | 待测 |
-| cuBLAS | FP32 / FP32 | 待测 | 待测 | 1.0 |
+| Naive | FP32 / FP32 | 3.2704 | 656.64 | 0.100 |
+| Tiled | FP32 / FP32 | 2.5362 | 846.74 | 0.129 |
+| Tensor Core | FP16 / FP32 | 0.8301 | 2587.01 | 0.394 |
+| cuBLAS | FP32 / FP32 | 0.3268 | 6572.08 | 1.0 |
+
+2048³、预热 5 次、测量 50 次的结果：Naive 23.2594 ms，Tiled 17.0856 ms，Tensor Core 6.5123 ms，cuBLAS 2.3979 ms。两种尺寸均为 `Validation: PASS`，各实现 failed_elements 为 0。CSV 分别为运行目录的 `results_1024.csv`、`results_2048.csv`（默认被 gitignore 忽略）。
+
+本次 1024³ 中 Tiled 比 Naive 约快 1.29 倍，WMMA 比 Tiled 约快 3.06 倍，但仍慢于 cuBLAS。WMMA 对完整 FP32 参考的最大绝对误差约为 0.0138（2048³ 为 0.0206），其数值验证使用量化输入参考。
 
 ## Profiling 与瓶颈分析
 
-三个 report 文件内提供可直接执行的 ncu 命令，运行后会被真实报告覆盖。需要安装 Nsight Compute 并具有 GPU 性能计数器访问权限。正则只选择目标内核，跳过其 5 次预热，采集下一次调用；不会把 cuBLAS 基线混入目标报告。更改 `--warmup` 时同步调整 `--launch-skip`。
+本次尝试 ncu 采集 Naive 时，工具返回 `Profiling is not supported on device 0`、`No kernels were profiled`，失败日志保存在 `profile/naive_report.txt`。因此尚无性能计数器报告，Tiled/WMMA 报告仍是命令模板。需排查当前 Nsight Compute 版本与 WSL/GPU 支持后再采集；本次未修改驱动或系统工具。使用 `build-linux` 构建时，将模板命令中的 `./build/` 替换为 `./build-linux/`。
+
+采集需要安装 Nsight Compute 并具有 GPU 性能计数器访问权限。正则只选择目标内核，跳过其 5 次预热，采集下一次调用；不会把 cuBLAS 基线混入目标报告。更改 `--warmup` 时同步调整 `--launch-skip`。
 
 预期机制与待验证假设如下，不能作为实测结论：
 
@@ -79,4 +85,4 @@ cuBLAS 通过 `C^T=B^T*A^T` 适配行主序，使用 `CUBLAS_PEDANTIC_MATH` 作�
 2. Tiled 将每个加载元素复用 16 次，理想化强度约为 4 FLOP/byte（忽略 C 写入和尾块）。但同步、共享内存指令、每线程单输出和较短计算链也有代价。检查 Scheduler、Warp State、Occupancy 与 shared-memory bank 指标，不能仅凭 padding 就断言消除了瓶颈。
 3. WMMA 提高矩阵乘加吞吐，但一个 block 只有一个 warp，且不同输出 tile 会重复加载、转换输入。小矩阵可能由启动开销主导，大矩阵可能受转换、加载及并行调度限制。查看 Tensor 指令、SM 吞吐、寄存器和 occupancy，再判断是否需要多 warp tile、寄存器复用或预转换。
 
-优化结论：本项目先提供清晰且统一的比较入口。shared-memory 复用和硬件矩阵指令是两条不同优化路径；FP16 有精度代价，不能仅用速度得出“更好的 SGEMM”。只有采集本机数据后才能确定三者的速度排序和实际瓶颈。下一步可逐次修改 tile 大小或 warp 布局，每次保留同形状正确性检查和无 profiler 的计时数据。
+优化结论：本次两种尺寸的速度排序均为 cuBLAS、WMMA、Tiled、Naive。shared-memory 复用和硬件矩阵指令在本次计时中都有收益；FP16 有精度代价，不能仅用速度得出“更好的 SGEMM”。实际瓶颈仍需性能计数器验证。下一步可逐次修改 tile 大小或 warp 布局，每次保留同形状正确性检查和无 profiler 的计时数据。
