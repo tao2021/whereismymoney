@@ -1,0 +1,12 @@
+my-sgemm/
+├── src/
+│   ├── naive.cu
+│   ├── tiled.cu
+│   └── tensor_core.cu
+├── bench/
+│   └── benchmark.cpp      # 计时、正确性验证、与 cuBLAS 对比
+├── profile/
+│   ├── naive_report.txt   # ncu 输出
+│   ├── tiled_report.txt
+│   └── tensor_core_report.txt
+└── README.md              # 性能对比表 + 瓶颈分析 + 优化结论

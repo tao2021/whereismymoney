@@ -1,0 +1,4 @@
+STATUS: NOT COLLECTED. This is a placeholder, not measured ncu output.
+From my-sgemm/ after building (Linux shell):
+ncu --target-processes all --kernel-name regex:naive_kernel --launch-skip 5 --launch-count 1 --set full --log-file profile/naive_report.txt ./build/sgemm_benchmark --kernel naive --m 1024 --n 1024 --k 1024 --warmup 5 --repeat 20
+On Windows use .\build\Release\sgemm_benchmark.exe as the executable.

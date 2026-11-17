@@ -1,0 +1,4 @@
+/build*/
+*.csv
+*.ncu-rep
+*.nsys-rep
